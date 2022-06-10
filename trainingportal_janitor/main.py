@@ -34,7 +34,7 @@ def main(args=None):
         try:
             counter: Counter = Counter()
             client = dynamic.DynamicClient(
-                api_client.ApiClient(configuration=config.load_kube_config())
+                api_client.ApiClient(configuration=get_in_cluster_with_fallback())
             )
 
             trainingportal_api = client.resources.get(
@@ -56,6 +56,17 @@ def main(args=None):
             return
         with handler.safe_exit():
             time.sleep(args.interval)
+
+
+def get_in_cluster_with_fallback():
+    config_obj = None
+    logger.debug("Attempting to load in cluster config")
+    try:
+        config_obj = config.load_incluster_config()
+    except Exception as e:
+        logger.debug(f"Couldn't load in cluster config: {e}")
+        logger.debug("Attempting to load local client config")
+        config_obj = config.load_kube_config()
 
 
 def parse_expiry(expiry: str) -> datetime.datetime:
