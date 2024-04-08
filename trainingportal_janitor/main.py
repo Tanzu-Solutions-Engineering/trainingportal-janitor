@@ -37,15 +37,7 @@ def main(args=None):
                 api_client.ApiClient(configuration=get_in_cluster_with_fallback())
             )
 
-            trainingportal_api = client.resources.get(
-                api_version="learningcenter.tanzu.vmware.com/v1beta1", kind="TrainingPortal"
-            )
-
-            logger.debug("Listing training portals")
-            trainingportals = trainingportal_api.get()
-            for trainingportal in trainingportals.items:
-                counter.update(handle_trainingportal_expiry(trainingportal_api,
-                    trainingportal, args.dry_run))
+            sweep_objects(client, "training.educates.dev/v1beta1", counter, args.dry_run)
 
             stats = ", ".join([f"{k}={v}" for k, v in counter.items()])
             logger.info(f"Clean up run completed: {stats}")
@@ -57,6 +49,16 @@ def main(args=None):
         with handler.safe_exit():
             time.sleep(args.interval)
 
+def sweep_objects(client, tp_api_version, counter, dry_run):
+    trainingportal_api = client.resources.get(
+        api_version=tp_api_version, kind="TrainingPortal"
+    )
+
+    logger.debug("Listing %s training portals" %(tp_api_version))
+    trainingportals = trainingportal_api.get()
+    for trainingportal in trainingportals.items:
+        counter.update(handle_trainingportal_expiry(trainingportal_api,
+            trainingportal, dry_run))
 
 def get_in_cluster_with_fallback():
     config_obj = None
